@@ -1,6 +1,5 @@
 package com.tihor.centrifuge_poc.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tihor.centrifuge_poc.model.Reaction;
 import com.tihor.centrifuge_poc.repository.ReactionRepository;
@@ -15,10 +14,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 @Service
@@ -63,12 +63,19 @@ public class ReactionService {
         log.info("Response: {}", response);
     }
 
-    public void saveReaction(byte[] data) {
+    public List<Reaction> saveReaction(byte[] data) {
         try {
             Reaction reaction = objectMapper.readValue(data, Reaction.class);
+
+            reaction.setTs(LocalDateTime.now());
             reactionRepository.save(reaction);
+
+            return StreamSupport.stream(reactionRepository.findAll().spliterator(), false)
+                    .toList();
         } catch (IOException e) {
             log.error("Error while saving reaction: {}", e.getMessage());
         }
+
+        return Collections.emptyList();
     }
 }

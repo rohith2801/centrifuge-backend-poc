@@ -1,12 +1,10 @@
 package com.tihor.centrifuge_poc.runner;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tihor.centrifuge_poc.model.Reaction;
-import com.tihor.centrifuge_poc.repository.ReactionRepository;
+import com.tihor.centrifuge_poc.service.CentrifugeService;
 import com.tihor.centrifuge_poc.service.ReactionService;
 import io.github.centrifugal.centrifuge.Client;
 import io.github.centrifugal.centrifuge.DuplicateSubscriptionException;
-import io.github.centrifugal.centrifuge.HistoryOptions;
 import io.github.centrifugal.centrifuge.JoinEvent;
 import io.github.centrifugal.centrifuge.LeaveEvent;
 import io.github.centrifugal.centrifuge.Subscription;
@@ -18,7 +16,6 @@ import io.github.centrifugal.centrifuge.SubscribedEvent;
 import io.github.centrifugal.centrifuge.SubscriptionOptions;
 import io.github.centrifugal.centrifuge.UnsubscribedEvent;
 
-import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,9 +24,8 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
+import java.util.List;
 
 @Component
 @Slf4j
@@ -39,6 +35,9 @@ public class ReactionApplicationRunner implements ApplicationRunner {
 
     @Autowired
     private ReactionService reactionService;
+
+    @Autowired
+    private CentrifugeService centrifugeService;
 
     @Autowired
     private Client client;
@@ -77,7 +76,9 @@ public class ReactionApplicationRunner implements ApplicationRunner {
 
             @Override
             public void onPublication(Subscription sub, PublicationEvent event) {
-                reactionService.saveReaction(event.getData());
+                List<Reaction> reactions = reactionService.saveReaction(event.getData());
+                centrifugeService.publishHostAnalyticsData(sub.getChannel() + "-host-analytics", reactions);
+
                 String data = new String(event.getData(), StandardCharsets.UTF_8);
                 System.out.println("Subscription - message from " + sub.getChannel() + " " + data);
             }

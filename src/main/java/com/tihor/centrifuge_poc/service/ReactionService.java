@@ -3,6 +3,8 @@ package com.tihor.centrifuge_poc.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tihor.centrifuge_poc.model.Reaction;
+import com.tihor.centrifuge_poc.repository.ReactionRepository;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,14 +14,24 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @Service
 @Slf4j
 public class ReactionService {
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Resource
+    private ReactionRepository reactionRepository;
 
     @Value("${centrifuge.base-url}")
     private String centrifugeBaseUrl;
@@ -49,5 +61,14 @@ public class ReactionService {
 
         String response = restTemplate.postForObject(centrifugoApiUrl, request, String.class);
         log.info("Response: {}", response);
+    }
+
+    public void saveReaction(byte[] data) {
+        try {
+            Reaction reaction = objectMapper.readValue(data, Reaction.class);
+            reactionRepository.save(reaction);
+        } catch (IOException e) {
+            log.error("Error while saving reaction: {}", e.getMessage());
+        }
     }
 }

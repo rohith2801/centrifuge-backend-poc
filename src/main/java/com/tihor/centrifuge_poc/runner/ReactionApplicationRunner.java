@@ -1,5 +1,9 @@
 package com.tihor.centrifuge_poc.runner;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tihor.centrifuge_poc.model.Reaction;
+import com.tihor.centrifuge_poc.repository.ReactionRepository;
+import com.tihor.centrifuge_poc.service.ReactionService;
 import io.github.centrifugal.centrifuge.Client;
 import io.github.centrifugal.centrifuge.DuplicateSubscriptionException;
 import io.github.centrifugal.centrifuge.HistoryOptions;
@@ -14,6 +18,7 @@ import io.github.centrifugal.centrifuge.SubscribedEvent;
 import io.github.centrifugal.centrifuge.SubscriptionOptions;
 import io.github.centrifugal.centrifuge.UnsubscribedEvent;
 
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,13 +27,18 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 
 @Component
 @Slf4j
 public class ReactionApplicationRunner implements ApplicationRunner {
     @Autowired
     private RestTemplate restTemplate;
+
+    @Autowired
+    private ReactionService reactionService;
 
     @Autowired
     private Client client;
@@ -67,6 +77,7 @@ public class ReactionApplicationRunner implements ApplicationRunner {
 
             @Override
             public void onPublication(Subscription sub, PublicationEvent event) {
+                reactionService.saveReaction(event.getData());
                 String data = new String(event.getData(), StandardCharsets.UTF_8);
                 System.out.println("Subscription - message from " + sub.getChannel() + " " + data);
             }
@@ -87,47 +98,46 @@ public class ReactionApplicationRunner implements ApplicationRunner {
         try {
             sub = client.newSubscription("event-channel-1", subOpts, subListener);
         } catch (DuplicateSubscriptionException e) {
-            e.printStackTrace();
+            log.error("Exception while new subscription: {}", e.getMessage(), e);
             return;
         }
 
         sub.subscribe();
 
-        String data = "{\"emoji\": \"hellooo.. \", \"userId\": \"admin\"}";
-
-        client.publish("event-channel-1", data.getBytes(), (err, res) -> {
-            if (err != null) {
-                System.out.println("error publish: " + err);
-                return;
-            }
-            System.out.println("successfully published");
-        });
-
-        // Publish via subscription (will wait for subscribe success before publishing).
-        sub.publish(data.getBytes(), (err, res) -> {
-            if (err != null) {
-                System.out.println("error publish: " + err);
-                return;
-            }
-            System.out.println("successfully published");
-        });
-
-        sub.presenceStats((err, res) -> {
-            if (err != null) {
-                System.out.println("error presence stats: " + err);
-                return;
-            }
-            System.out.println("Num clients connected: " + res.getNumClients());
-        });
-
-        sub.history(new HistoryOptions.Builder().withLimit(-1).build(), (err, res) -> {
-            if (err != null) {
-                System.out.println("error history: " + err);
-                return;
-            }
-            System.out.println("Num history publication: " + res.getPublications().size());
-            System.out.println("Top stream offset: " + res.getOffset());
-        });
+//        String data = "{\"emoji\": \"hellooo.. \", \"userId\": \"admin\"}";
+//
+//        client.publish("event-channel-1", data.getBytes(), (err, res) -> {
+//            if (err != null) {
+//                System.out.println("error publish: " + err);
+//                return;
+//            }
+//            System.out.println("successfully published");
+//        });
+//
+//        sub.publish(data.getBytes(), (err, res) -> {
+//            if (err != null) {
+//                System.out.println("error publish: " + err);
+//                return;
+//            }
+//            System.out.println("successfully published");
+//        });
+//
+//        sub.presenceStats((err, res) -> {
+//            if (err != null) {
+//                System.out.println("error presence stats: " + err);
+//                return;
+//            }
+//            System.out.println("Num clients connected: " + res.getNumClients());
+//        });
+//
+//        sub.history(new HistoryOptions.Builder().withLimit(-1).build(), (err, res) -> {
+//            if (err != null) {
+//                System.out.println("error history: " + err);
+//                return;
+//            }
+//            System.out.println("Num history publication: " + res.getPublications().size());
+//            System.out.println("Top stream offset: " + res.getOffset());
+//        });
 
 //        try {
 //            Thread.sleep(2000);
